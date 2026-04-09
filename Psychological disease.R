@@ -153,7 +153,7 @@ random_search_xgb <- function(n_iter = 50) {
   return(list(best_auc = best_auc, best_params = best_params))
 }
 
-# 执行随机搜索 (50次迭代)
+# 执行随机搜索 (100次迭代)
 set.seed(123)
 random_results <- random_search_xgb(n_iter = 100)
 
@@ -251,7 +251,7 @@ print(xgb_bo$Best_Par)
 
 
 # Best Parameters Found: 
-#   Round = 39	max_depth = 7.0000	min_child_weight = 4.688805	colsample_bytree = 0.5502585	subsample = 0.6957404	gamma = 0.6117566	alpha = 3.016047	eta = 0.1669546	nrounds = 142.0000	lambda = 8.681767	Value = 0.7423342 
+#   Round = 39	max_depth = 7.0000	min_child_weight = 4.688805	colsample_bytree = 0.5502585	subsample = 0.6957404	gamma = 0.6117566	alpha = 3.016047	eta = 0.1669546	nrounds = 142.0000	lambda = 8.681767	Value = 0.7423342  
 
 
 
@@ -325,23 +325,23 @@ roc_data <- rbind(
   data.frame(
     Specificity = roc_train$specificities,
     Sensitivity = roc_train$sensitivities,
-    Dataset = paste0("Train: AUC = ", round(auc_train, 3), 
+    Dataset = paste0("训练集: AUC = ", round(auc_train, 3), 
                      " (95% CI: ", round(ci_train[1], 3), "-", round(ci_train[3], 3), ")")
   ),
   data.frame(
     Specificity = roc_test$specificities,
     Sensitivity = roc_test$sensitivities,
-    Dataset = paste0("Test: AUC = ", round(auc_test, 3), 
+    Dataset = paste0("测试集: AUC = ", round(auc_test, 3), 
                      " (95% CI: ", round(ci_test[1], 3), "-", round(ci_test[3], 3), ")")
   )
 )
 
 # 绘制ROC曲线
-roc_plot <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = Dataset)) +
+roc_plot_psyche <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = Dataset)) +
   geom_line(size = 1.2) +
   geom_abline(linetype = "dashed", color = "gray") +
-  labs(x = "1 - Specificity (False Positive Rate)", 
-       y = "Sensitivity (True Positive Rate)"
+  labs(x = "1 - 特异度", 
+       y = "灵敏度"
        # title = "ROC Curves for Memory Problem Prediction"
   ) +
   scale_color_manual(values = c("#377eb8", "#e41a1c")) + # 蓝色为训练集，红色为测试集
@@ -349,6 +349,6 @@ roc_plot <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = D
   theme(legend.position = "bottom",
         legend.title = element_blank())
 
-print(roc_plot)
+print(roc_plot_psyche)
 
 

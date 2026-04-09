@@ -87,7 +87,7 @@ random_search_xgb <- function(n_iter = 50) {
     min_child_weight = c(1L, 100L),
     colsample_bytree = c(0.3, 1.0),
     subsample = c(0.5, 1.0),
-    gamma = c(0, 00),
+    gamma = c(0, 10),
     alpha = c(0, 20),
     eta = c(0.005, 0.5),
     nrounds = c(10L, 1000L),
@@ -153,9 +153,9 @@ random_search_xgb <- function(n_iter = 50) {
   return(list(best_auc = best_auc, best_params = best_params))
 }
 
-# 执行随机搜索 (50次迭代)
+# 执行随机搜索 (100次迭代)
 set.seed(123)
-random_results <- random_search_xgb(n_iter = 500)
+random_results <- random_search_xgb(n_iter = 100)
 
 # 打印随机搜索结果
 cat("\n\n===== 随机搜索完成 =====")
@@ -250,10 +250,8 @@ cat("\n最佳参数组合:\n")
 print(xgb_bo$Best_Par)
 
 
-# max_depth min_child_weight colsample_bytree        subsample            gamma 
-# 13.0000000       10.0533990        0.7099899        0.6264567        0.6843138 
-# alpha              eta          nrounds           lambda 
-# 5.1088004        0.2041233      162.0000000       15.1354501 
+# Best Parameters Found: 
+#   Round = 40	max_depth = 4.0000	min_child_weight = 25.09737	colsample_bytree = 0.6406049	subsample = 0.8475186	gamma = 2.220446e-16	alpha = 3.732319	eta = 0.0627916	nrounds = 213.0000	lambda = 1.716461	Value = 0.7243834 
 
 
 
@@ -264,14 +262,14 @@ final_params <- list(
   booster = "gbtree",
   objective = "binary:logistic",
   eval_metric = "auc",
-  max_depth = as.integer(13),
-  min_child_weight =10.0533990 ,
-  colsample_bytree = 0.7099899,
-  subsample = 0.6264567,
-  gamma = 0.6843138,
-  alpha = 5.1088004,
-  eta = 0.2041233,
-  lambda = 15.1354501
+  max_depth = as.integer(4),
+  min_child_weight =25.09737 ,
+  colsample_bytree = 0.6406049,
+  subsample = 0.8475186,
+  gamma = 2.220446e-16,
+  alpha = 3.732319,
+  eta = 0.0627916,
+  lambda = 1.716461
 )
 
 
@@ -281,7 +279,7 @@ set.seed(123)
 xgb_final <- xgb.train(
   params = final_params,
   data = dtrain,
-  nrounds = 162,
+  nrounds = 213,
   maximize = TRUE,
   print_every_n = 10
 )
@@ -326,23 +324,23 @@ roc_data <- rbind(
   data.frame(
     Specificity = roc_train$specificities,
     Sensitivity = roc_train$sensitivities,
-    Dataset = paste0("Train: AUC = ", round(auc_train, 3), 
+    Dataset = paste0("训练集: AUC = ", round(auc_train, 3), 
                      " (95% CI: ", round(ci_train[1], 3), "-", round(ci_train[3], 3), ")")
   ),
   data.frame(
     Specificity = roc_test$specificities,
     Sensitivity = roc_test$sensitivities,
-    Dataset = paste0("Test: AUC = ", round(auc_test, 3), 
+    Dataset = paste0("测试集: AUC = ", round(auc_test, 3), 
                      " (95% CI: ", round(ci_test[1], 3), "-", round(ci_test[3], 3), ")")
   )
 )
 
 # 绘制ROC曲线
-roc_plot <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = Dataset)) +
+roc_plot_memory <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = Dataset)) +
   geom_line(size = 1.2) +
   geom_abline(linetype = "dashed", color = "gray") +
-  labs(x = "1 - Specificity (False Positive Rate)", 
-       y = "Sensitivity (True Positive Rate)"
+  labs(x = "1 - 特异度", 
+       y = "灵敏度"
       # title = "ROC Curves for Memory Problem Prediction"
        ) +
   scale_color_manual(values = c("#377eb8", "#e41a1c")) + # 蓝色为训练集，红色为测试集
@@ -350,6 +348,6 @@ roc_plot <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = D
   theme(legend.position = "bottom",
         legend.title = element_blank())
 
-print(roc_plot)
+print(roc_plot_memory)
 
 

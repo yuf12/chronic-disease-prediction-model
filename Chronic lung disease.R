@@ -83,11 +83,11 @@ random_search_xgb <- function(n_iter = 50) {
   
   # 大范围参数空间
   search_space <- list(
-    max_depth = c(2L, 15L),
+    max_depth = c(2L, 10L),
     min_child_weight = c(1L, 100L),
     colsample_bytree = c(0.3, 1.0),
     subsample = c(0.5, 1.0),
-    gamma = c(0, 00),
+    gamma = c(0, 20),
     alpha = c(0, 20),
     eta = c(0.005, 0.5),
     nrounds = c(10L, 1000L),
@@ -153,9 +153,9 @@ random_search_xgb <- function(n_iter = 50) {
   return(list(best_auc = best_auc, best_params = best_params))
 }
 
-# 执行随机搜索 (500次迭代)
+# 执行随机搜索 (100次迭代)
 set.seed(123)
-random_results <- random_search_xgb(n_iter = 500)
+random_results <- random_search_xgb(n_iter = 100)
 
 # 打印随机搜索结果
 cat("\n\n===== 随机搜索完成 =====")
@@ -254,21 +254,24 @@ best_bayes_params <- xgb_bo$Best_Par
 
 
 # Best Parameters Found: 
-#   Round = 29	max_depth = 8.0000	min_child_weight = 12.0880	colsample_bytree = 0.3271486	subsample = 0.7594576	gamma = 1.679762	alpha = 0.9484144	eta = 0.4148312	nrounds = 55.0000	lambda = 28.47087	Value = 0.6305684 
+#   Round = 30	max_depth = 10.0000	min_child_weight = 3.34067	colsample_bytree = 0.8417579	subsample = 0.6642965	gamma = 2.220446e-16	alpha = 9.513647	eta = 0.4214915	nrounds = 361.0000	lambda = 48.98874	Value = 0.6318945 
 
+# 
+# Best Parameters Found: 
+#   Round = 37	max_depth = 4.0000	min_child_weight = 32.09835	colsample_bytree = 0.4241182	subsample = 0.9983425	gamma = 2.220446e-16	alpha = 2.312641	eta = 0.1872647	nrounds = 167.0000	lambda = 39.00964	Value = 0.617443 
 
 final_params <- list(
   booster = "gbtree",
   objective = "binary:logistic",
   eval_metric = "auc",
-  max_depth = as.integer(8),
-  min_child_weight = 12.0880,
-  colsample_bytree = 0.3271486,
-  subsample = 0.7594576,
-  gamma = 1.679762,
-  alpha = 0.9484144,
-  eta = 0.4148312,
-  lambda = 28.47087
+  max_depth = as.integer(4),
+  min_child_weight = 32.09835,
+  colsample_bytree = 0.4241182,
+  subsample = 0.9983425,
+  gamma = 2.220446e-16,
+  alpha = 2.312641,
+  eta = 0.1872647,
+  lambda = 39.00964
 )
 
 
@@ -278,7 +281,7 @@ set.seed(123)
 xgb_final <- xgb.train(
   params = final_params,
   data = dtrain,
-  nrounds = 55,
+  nrounds = 167,
   maximize = TRUE,
   print_every_n = 10
 )
@@ -308,38 +311,57 @@ cat("\n测试集AUC:", round(auc_test, 4), "95% CI:", round(ci_test[1], 4), "-",
 # 变量重要性
 importance_matrix <- xgb.importance(model = xgb_final)
 
+# 创建中英文变量名映射表
+var_mapping <- c(
+  "s1cesd10" = "CESD-10（配偶）",
+  "r1cesd10" = "CESD-10",
+  "r1mobilsev" = "7项活动能力评分",
+  "r1hearte" = "心脏病",
+  "r1shlta" = "自评健康",
+  "r1smokev" = "吸烟史",
+  "r1arthre" = "关节炎",
+  "ChildHungry" = "童年饥饿",
+  "r1livere" = "肝脏疾病",
+  "r1digeste" = "消化系统疾病",
+  "ParHit" = "父母暴力",
+  "r1asthmae" = "哮喘",
+  "s1kidneye" = "肾脏疾病（配偶）"
+)
+
 # 绘制变量重要性图
-imp_plot <- ggplot(importance_matrix, aes(x = reorder(Feature, Gain), y = Gain)) +
+imp_plot_lung <- ggplot(importance_matrix, aes(x = reorder(Feature, Gain), y = Gain)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   coord_flip() +
-  labs(x = "Variable", y = "Importance (Gain)", 
-       title = "XGBoost Feature Importance") +
+  scale_x_discrete(labels = function(x) var_mapping[x]) +  # 映射变量名
+  labs(x = "变量", y = "重要性", 
+       #title = "XGBoost 特征重要性"
+  ) +
   theme_minimal()
 
-print(imp_plot)
+print(imp_plot_lung)
 
 # 准备ROC曲线数据
 roc_data <- rbind(
   data.frame(
     Specificity = roc_train$specificities,
     Sensitivity = roc_train$sensitivities,
-    Dataset = paste0("Train: AUC = ", round(auc_train, 3), 
+    Dataset = paste0("训练集: AUC = ", round(auc_train, 3), 
                      " (95% CI: ", round(ci_train[1], 3), "-", round(ci_train[3], 3), ")")
   ),
   data.frame(
     Specificity = roc_test$specificities,
     Sensitivity = roc_test$sensitivities,
-    Dataset = paste0("Test: AUC = ", round(auc_test, 3), 
+    Dataset = paste0("测试集: AUC = ", round(auc_test, 3), 
                      " (95% CI: ", round(ci_test[1], 3), "-", round(ci_test[3], 3), ")")
   )
 )
 
 # 绘制ROC曲线
-roc_plot <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = Dataset)) +
+roc_plot_lung <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = Dataset)) +
   geom_line(size = 1.2) +
   geom_abline(linetype = "dashed", color = "gray") +
-  labs(x = "1 - Specificity (False Positive Rate)", 
-       y = "Sensitivity (True Positive Rate)"
+  labs(x = "1 - 特异度", 
+       y = "灵敏度"
        #title = "ROC Curves"
        ) +
   scale_color_manual(values = c("#377eb8", "#e41a1c")) + # 蓝色为训练集，红色为测试集
@@ -347,4 +369,4 @@ roc_plot <- ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity, color = D
   theme(legend.position = "bottom",
         legend.title = element_blank())
 
-print(roc_plot)
+print(roc_plot_lung)
